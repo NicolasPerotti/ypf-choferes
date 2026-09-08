@@ -30,6 +30,18 @@
         <input type="text" id="aclaracion" autocomplete="off" placeholder="Nombre y apellido completo" />
         <div class="msg-error" id="err-aclaracion">Ingresá nombre y apellido.</div>
 
+        <label>Cantidad de tripulantes (choferes y/o coordinadores) <span class="req">*</span></label>
+        <select id="cantidad_tripulantes">
+          <option value="">Seleccioná...</option>
+          <option value="1">1 (solo yo)</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+        <div class="msg-error" id="err-cantidad_tripulantes">Seleccioná la cantidad de tripulantes.</div>
+
+        <div id="otros-tripulantes-wrap"></div>
+
         <label>DNI <span class="req">*</span></label>
         <input type="text" id="dni" inputmode="numeric" autocomplete="off" placeholder="Sin puntos" />
         <div class="msg-error" id="err-dni">Ingresá el número de DNI.</div>

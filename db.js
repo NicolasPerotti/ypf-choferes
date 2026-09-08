@@ -32,9 +32,25 @@ async function init() {
       patente TEXT NOT NULL,
       pax INTEGER NOT NULL,
       firma TEXT NOT NULL,
-      entregado INTEGER NOT NULL DEFAULT 0
+      entregado INTEGER NOT NULL DEFAULT 0,
+      cantidad_tripulantes INTEGER NOT NULL DEFAULT 1,
+      otros_tripulantes TEXT NOT NULL DEFAULT '[]'
     )
   `);
+
+  // Migracion: si la tabla ya existia de antes (sin estas columnas), las
+  // agrega ahora. Si ya existen, ALTER TABLE tira error y lo ignoramos.
+  const migraciones = [
+    'ALTER TABLE registros ADD COLUMN cantidad_tripulantes INTEGER NOT NULL DEFAULT 1',
+    "ALTER TABLE registros ADD COLUMN otros_tripulantes TEXT NOT NULL DEFAULT '[]'",
+  ];
+  for (const sql of migraciones) {
+    try {
+      await client.execute(sql);
+    } catch (err) {
+      // La columna ya existe: no hay nada que hacer.
+    }
+  }
 
   await client.execute(`
     CREATE TABLE IF NOT EXISTS contador (

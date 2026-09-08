@@ -59,7 +59,17 @@ app.get('/form', (req, res) => sendView(res, 'form.html'));
 
 app.post('/api/registros', async (req, res) => {
   try {
-    const { empresa, celular_empresa, aclaracion, dni, patente, pax, firma } = req.body;
+    const {
+      empresa,
+      celular_empresa,
+      aclaracion,
+      dni,
+      patente,
+      pax,
+      firma,
+      cantidad_tripulantes,
+      otros_tripulantes,
+    } = req.body;
 
     const errores = [];
     if (!empresa || !String(empresa).trim()) errores.push('empresa');
@@ -70,17 +80,38 @@ app.post('/api/registros', async (req, res) => {
       errores.push('pax');
     if (!firma || !String(firma).startsWith('data:image')) errores.push('firma');
 
+    const cantidadTripulantes = Number(cantidad_tripulantes);
+    if (!Number.isInteger(cantidadTripulantes) || cantidadTripulantes < 1 || cantidadTripulantes > 4) {
+      errores.push('cantidad_tripulantes');
+    }
+
+    const otrosTripulantesArr = Array.isArray(otros_tripulantes) ? otros_tripulantes : [];
+    if (!errores.includes('cantidad_tripulantes')) {
+      const esperados = cantidadTripulantes - 1;
+      if (otrosTripulantesArr.length !== esperados) {
+        errores.push('otros_tripulantes');
+      } else {
+        for (const nombre of otrosTripulantesArr) {
+          if (!nombre || !String(nombre).trim()) {
+            errores.push('otros_tripulantes');
+            break;
+          }
+        }
+      }
+    }
+
     if (errores.length) {
       return res.status(400).json({ error: 'Faltan campos obligatorios', campos: errores });
     }
 
     const folio = await siguienteFolio();
     const { fecha, fechaHora } = fechaHoraStr();
+    const otrosTripulantesLimpio = otrosTripulantesArr.map((n) => String(n).trim());
 
     const info = await client.execute({
       sql: `INSERT INTO registros
-        (folio, fecha_hora, fecha, empresa, celular_empresa, aclaracion, dni, patente, pax, firma, entregado)
-        VALUES (?,?,?,?,?,?,?,?,?,?,0)`,
+        (folio, fecha_hora, fecha, empresa, celular_empresa, aclaracion, dni, patente, pax, firma, entregado, cantidad_tripulantes, otros_tripulantes)
+        VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?)`,
       args: [
         folio,
         fechaHora,
@@ -92,6 +123,8 @@ app.post('/api/registros', async (req, res) => {
         String(patente).trim().toUpperCase(),
         Number(pax),
         firma,
+        cantidadTripulantes,
+        JSON.stringify(otrosTripulantesLimpio),
       ],
     });
 
@@ -109,7 +142,7 @@ app.get('/api/registros/hoy', async (req, res) => {
   try {
     const hoy = fechaHoyStr();
     const result = await client.execute({
-      sql: `SELECT id, folio, fecha_hora, empresa, celular_empresa, aclaracion, patente, pax, entregado
+      sql: `SELECT id, folio, fecha_hora, empresa, celular_empresa, aclaracion, patente, pax, entregado, cantidad_tripulantes, otros_tripulantes
             FROM registros WHERE fecha = ? ORDER BY id DESC`,
       args: [hoy],
     });
@@ -259,10 +292,18 @@ app.get('/api/admin/export.csv', requireAdmin, async (req, res) => {
     'patente',
     'pax',
     'entregado',
+    'cantidad_tripulantes',
+    'otros_tripulantes',
   ];
   const csvEscape = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lines = [headers.join(';')];
   for (const r of rows) {
+    let otros = [];
+    try {
+      otros = JSON.parse(r.otros_tripulantes || '[]');
+    } catch (e) {
+      otros = [];
+    }
     lines.push(
       [
         r.folio,
@@ -274,6 +315,8 @@ app.get('/api/admin/export.csv', requireAdmin, async (req, res) => {
         r.patente,
         r.pax,
         r.entregado ? 'SI' : 'NO',
+        r.cantidad_tripulantes || 1,
+        otros.join(' | '),
       ]
         .map(csvEscape)
         .join(';')

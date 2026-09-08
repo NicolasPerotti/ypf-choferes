@@ -19,6 +19,19 @@
     return fechaHora.split(' ')[1] ? fechaHora.split(' ')[1].slice(0, 5) : fechaHora;
   }
 
+  function tripulantesTexto(r) {
+    let otros = [];
+    try {
+      otros = JSON.parse(r.otros_tripulantes || '[]');
+    } catch (e) {
+      otros = [];
+    }
+    const cantidad = r.cantidad_tripulantes || 1;
+    if (cantidad <= 1) return `${cantidad}`;
+    const nombres = [escapeHtml(r.aclaracion), ...otros.map(escapeHtml)].join(', ');
+    return `${cantidad} <span class="hint" title="${nombres}">(ver nombres)</span>`;
+  }
+
   function render(registros) {
     contador.textContent = registros.length;
 
@@ -34,6 +47,7 @@
           <td data-label="Empresa">${escapeHtml(r.empresa)}</td>
           <td data-label="Patente">${escapeHtml(r.patente)}</td>
           <td data-label="Chofer/Coord.">${escapeHtml(r.aclaracion)}</td>
+          <td data-label="Tripulantes">${tripulantesTexto(r)}</td>
           <td data-label="PAX">${r.pax}</td>
           <td data-label="Estado">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
@@ -49,7 +63,7 @@
         <table>
           <thead>
             <tr>
-              <th>Hora</th><th>Empresa</th><th>Patente</th><th>Chofer / Coordinador</th><th>PAX</th><th>Estado</th>
+              <th>Hora</th><th>Empresa</th><th>Patente</th><th>Chofer / Coordinador</th><th>Tripulantes</th><th>PAX</th><th>Estado</th>
             </tr>
           </thead>
           <tbody>${filas}</tbody>

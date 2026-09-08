@@ -54,6 +54,17 @@
     cuerpoTabla.innerHTML = rows
       .map((r) => {
         const [fecha, hora] = r.fecha_hora.split(' ');
+        let otros = [];
+        try {
+          otros = JSON.parse(r.otros_tripulantes || '[]');
+        } catch (e) {
+          otros = [];
+        }
+        const cantidad = r.cantidad_tripulantes || 1;
+        const tripulantesTexto =
+          cantidad <= 1
+            ? '1'
+            : `${cantidad} — ${[escapeHtml(r.aclaracion), ...otros.map(escapeHtml)].join(', ')}`;
         return `
         <tr>
           <td data-label="Folio">${r.folio}</td>
@@ -62,6 +73,7 @@
           <td data-label="Empresa">${escapeHtml(r.empresa)}</td>
           <td data-label="Celular">${escapeHtml(r.celular_empresa)}</td>
           <td data-label="Chofer/Coord.">${escapeHtml(r.aclaracion)}</td>
+          <td data-label="Tripulantes">${tripulantesTexto}</td>
           <td data-label="DNI">${escapeHtml(r.dni)}</td>
           <td data-label="Patente">${escapeHtml(r.patente)}</td>
           <td data-label="PAX">${r.pax}</td>

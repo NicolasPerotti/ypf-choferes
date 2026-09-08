@@ -67,6 +67,49 @@
     ocultarError('firma');
   });
 
+  // ---- Cantidad de tripulantes: genera casillas dinamicas para el resto ----
+  const selectCantidad = document.getElementById('cantidad_tripulantes');
+  const wrapOtros = document.getElementById('otros-tripulantes-wrap');
+
+  function regenerarCamposTripulantes() {
+    const cantidad = parseInt(selectCantidad.value, 10);
+    wrapOtros.innerHTML = '';
+    if (!cantidad || cantidad <= 1) return;
+
+    for (let i = 2; i <= cantidad; i++) {
+      const idCampo = `otro_tripulante_${i}`;
+      const label = document.createElement('label');
+      label.textContent = `Nombre y apellido - Tripulante ${i} `;
+      const req = document.createElement('span');
+      req.className = 'req';
+      req.textContent = '*';
+      label.appendChild(req);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = idCampo;
+      input.className = 'otro-tripulante-input';
+      input.autocomplete = 'off';
+      input.placeholder = 'Nombre y apellido completo';
+
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'msg-error';
+      errorDiv.id = `err-${idCampo}`;
+      errorDiv.textContent = 'Ingresá el nombre de este tripulante.';
+
+      input.addEventListener('input', () => ocultarError(idCampo));
+
+      wrapOtros.appendChild(label);
+      wrapOtros.appendChild(input);
+      wrapOtros.appendChild(errorDiv);
+    }
+  }
+
+  selectCantidad.addEventListener('change', () => {
+    ocultarError('cantidad_tripulantes');
+    regenerarCamposTripulantes();
+  });
+
   function mostrarError(campo) {
     document.getElementById('err-' + campo).classList.add('show');
     const el = document.getElementById(campo);
@@ -106,6 +149,31 @@
       valido = false;
     }
 
+    // Cantidad de tripulantes
+    const cantidadTripulantesVal = selectCantidad.value;
+    if (!cantidadTripulantesVal) {
+      mostrarError('cantidad_tripulantes');
+      valido = false;
+    } else {
+      ocultarError('cantidad_tripulantes');
+    }
+    const cantidadTripulantes = parseInt(cantidadTripulantesVal, 10) || 0;
+
+    // Nombres de los demas tripulantes (campos generados dinamicamente)
+    const otrosTripulantes = [];
+    for (let i = 2; i <= cantidadTripulantes; i++) {
+      const idCampo = `otro_tripulante_${i}`;
+      const input = document.getElementById(idCampo);
+      const v = input ? input.value.trim() : '';
+      if (!v) {
+        mostrarError(idCampo);
+        valido = false;
+      } else {
+        ocultarError(idCampo);
+      }
+      otrosTripulantes.push(v);
+    }
+
     if (!tieneTrazo) {
       mostrarError('firma');
       firmaWrap.classList.add('error');
@@ -131,6 +199,8 @@
       dni: valores.dni,
       patente: valores.patente,
       pax: Number(valores.pax),
+      cantidad_tripulantes: cantidadTripulantes,
+      otros_tripulantes: otrosTripulantes,
       firma: canvas.toDataURL('image/png'),
     };
 
@@ -156,6 +226,7 @@
 
   document.getElementById('btn-nuevo').addEventListener('click', () => {
     form.reset();
+    wrapOtros.innerHTML = '';
     const rect = canvas.getBoundingClientRect();
     ctx.clearRect(0, 0, rect.width, 200);
     tieneTrazo = false;
