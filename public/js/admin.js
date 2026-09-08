@@ -65,6 +65,19 @@
           cantidad <= 1
             ? '1'
             : `${cantidad} — ${[escapeHtml(r.aclaracion), ...otros.map(escapeHtml)].join(', ')}`;
+
+        let pedidos = [];
+        try {
+          pedidos = JSON.parse(r.pedidos || '[]');
+        } catch (e) {
+          pedidos = [];
+        }
+        const pedidosTexto = pedidos.length
+          ? pedidos
+              .map((p) => `${escapeHtml(p.nombre)}: ${escapeHtml(p.producto)}${p.detalle ? ` (${escapeHtml(p.detalle)})` : ''}`)
+              .join('<br>')
+          : '<span class="hint">Sin datos</span>';
+
         return `
         <tr>
           <td data-label="Folio">${r.folio}</td>
@@ -74,6 +87,7 @@
           <td data-label="Celular">${escapeHtml(r.celular_empresa)}</td>
           <td data-label="Chofer/Coord.">${escapeHtml(r.aclaracion)}</td>
           <td data-label="Tripulantes">${tripulantesTexto}</td>
+          <td data-label="Pedidos">${pedidosTexto}</td>
           <td data-label="DNI">${escapeHtml(r.dni)}</td>
           <td data-label="Patente">${escapeHtml(r.patente)}</td>
           <td data-label="PAX">${r.pax}</td>

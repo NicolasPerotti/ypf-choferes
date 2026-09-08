@@ -34,7 +34,8 @@ async function init() {
       firma TEXT NOT NULL,
       entregado INTEGER NOT NULL DEFAULT 0,
       cantidad_tripulantes INTEGER NOT NULL DEFAULT 1,
-      otros_tripulantes TEXT NOT NULL DEFAULT '[]'
+      otros_tripulantes TEXT NOT NULL DEFAULT '[]',
+      pedidos TEXT NOT NULL DEFAULT '[]'
     )
   `);
 
@@ -43,6 +44,7 @@ async function init() {
   const migraciones = [
     'ALTER TABLE registros ADD COLUMN cantidad_tripulantes INTEGER NOT NULL DEFAULT 1',
     "ALTER TABLE registros ADD COLUMN otros_tripulantes TEXT NOT NULL DEFAULT '[]'",
+    "ALTER TABLE registros ADD COLUMN pedidos TEXT NOT NULL DEFAULT '[]'",
   ];
   for (const sql of migraciones) {
     try {

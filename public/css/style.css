@@ -104,6 +104,21 @@ input.error, .firma-wrap.error {
 }
 .msg-error.show { display: block; }
 
+.tripulante-card {
+  border: 1.5px solid var(--gris-borde);
+  border-radius: 10px;
+  padding: 4px 16px 12px;
+  margin: 18px 0;
+  background: #fafbfc;
+}
+.tripulante-card h4 {
+  margin: 14px 0 2px;
+  font-size: 14px;
+  color: var(--ypf-azul);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
 .hint { font-size: 12.5px; color: var(--gris-texto); margin-top: 4px; }
 
 .firma-wrap {
@@ -213,6 +228,13 @@ tbody td {
 tbody tr:last-child td { border-bottom: none; }
 tbody tr.entregado { background: #eef8f0; opacity: 0.75; }
 tbody tr:hover { background: #f7f9fc; }
+
+.pedidos-lista {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+}
+.pedidos-lista li { margin-bottom: 3px; }
 
 .badge {
   display: inline-block;

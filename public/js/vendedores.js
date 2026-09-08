@@ -20,16 +20,34 @@
   }
 
   function tripulantesTexto(r) {
+    const cantidad = r.cantidad_tripulantes || 1;
+    if (cantidad <= 1) return `${cantidad}`;
     let otros = [];
     try {
       otros = JSON.parse(r.otros_tripulantes || '[]');
     } catch (e) {
       otros = [];
     }
-    const cantidad = r.cantidad_tripulantes || 1;
-    if (cantidad <= 1) return `${cantidad}`;
     const nombres = [escapeHtml(r.aclaracion), ...otros.map(escapeHtml)].join(', ');
     return `${cantidad} <span class="hint" title="${nombres}">(ver nombres)</span>`;
+  }
+
+  function pedidosHtml(r) {
+    let pedidos = [];
+    try {
+      pedidos = JSON.parse(r.pedidos || '[]');
+    } catch (e) {
+      pedidos = [];
+    }
+    if (!pedidos.length) return '<span class="hint">Sin datos</span>';
+
+    const items = pedidos
+      .map((p) => {
+        const detalle = p.detalle ? ` <span class="hint">(${escapeHtml(p.detalle)})</span>` : '';
+        return `<li><strong>${escapeHtml(p.nombre)}:</strong> ${escapeHtml(p.producto)}${detalle}</li>`;
+      })
+      .join('');
+    return `<ul class="pedidos-lista">${items}</ul>`;
   }
 
   function render(registros) {
@@ -48,6 +66,7 @@
           <td data-label="Patente">${escapeHtml(r.patente)}</td>
           <td data-label="Chofer/Coord.">${escapeHtml(r.aclaracion)}</td>
           <td data-label="Tripulantes">${tripulantesTexto(r)}</td>
+          <td data-label="Pedidos (para cocinar)">${pedidosHtml(r)}</td>
           <td data-label="PAX">${r.pax}</td>
           <td data-label="Estado">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
@@ -63,7 +82,7 @@
         <table>
           <thead>
             <tr>
-              <th>Hora</th><th>Empresa</th><th>Patente</th><th>Chofer / Coordinador</th><th>Tripulantes</th><th>PAX</th><th>Estado</th>
+              <th>Hora</th><th>Empresa</th><th>Patente</th><th>Chofer / Coordinador</th><th>Tripulantes</th><th>Pedidos (para cocinar)</th><th>PAX</th><th>Estado</th>
             </tr>
           </thead>
           <tbody>${filas}</tbody>

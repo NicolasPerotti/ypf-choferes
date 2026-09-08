@@ -57,19 +57,21 @@ function sendView(res, file) {
 app.get('/', (req, res) => res.redirect('/form'));
 app.get('/form', (req, res) => sendView(res, 'form.html'));
 
+const PRODUCTOS_VALIDOS = [
+  'Combo de Café',
+  'Combo de Hamb. Simple con Queso',
+  'Combo de Hamb. Simple con Huevo',
+  'Combo de Hamb. Doble',
+  'Combo de Hamb. Doble con Huevo',
+  'Combo de Ensalada',
+  'Otro',
+];
+const TIPOS_CAFE_VALIDOS = ['Cafe + 2 medialunas', 'Cafe con leche + 2 medialunas'];
+
 app.post('/api/registros', async (req, res) => {
   try {
-    const {
-      empresa,
-      celular_empresa,
-      aclaracion,
-      dni,
-      patente,
-      pax,
-      firma,
-      cantidad_tripulantes,
-      otros_tripulantes,
-    } = req.body;
+    const { empresa, celular_empresa, aclaracion, dni, patente, pax, firma, cantidad_tripulantes, tripulantes } =
+      req.body;
 
     const errores = [];
     if (!empresa || !String(empresa).trim()) errores.push('empresa');
@@ -85,33 +87,51 @@ app.post('/api/registros', async (req, res) => {
       errores.push('cantidad_tripulantes');
     }
 
-    const otrosTripulantesArr = Array.isArray(otros_tripulantes) ? otros_tripulantes : [];
+    const tripulantesArr = Array.isArray(tripulantes) ? tripulantes : [];
+    const tripulantesLimpio = [];
     if (!errores.includes('cantidad_tripulantes')) {
-      const esperados = cantidadTripulantes - 1;
-      if (otrosTripulantesArr.length !== esperados) {
-        errores.push('otros_tripulantes');
+      if (tripulantesArr.length !== cantidadTripulantes) {
+        errores.push('tripulantes');
       } else {
-        for (const nombre of otrosTripulantesArr) {
-          if (!nombre || !String(nombre).trim()) {
-            errores.push('otros_tripulantes');
+        for (const t of tripulantesArr) {
+          const nombre = t && t.nombre ? String(t.nombre).trim() : '';
+          const producto = t && t.producto ? String(t.producto).trim() : '';
+          let detalle = t && t.detalle !== undefined && t.detalle !== null ? String(t.detalle).trim() : '';
+
+          if (!nombre || !PRODUCTOS_VALIDOS.includes(producto)) {
+            errores.push('tripulantes');
             break;
           }
+          if (producto === 'Combo de Café') {
+            if (!TIPOS_CAFE_VALIDOS.includes(detalle)) {
+              errores.push('tripulantes');
+              break;
+            }
+          } else if (producto === 'Otro') {
+            if (!detalle) {
+              errores.push('tripulantes');
+              break;
+            }
+          } else {
+            detalle = null;
+          }
+          tripulantesLimpio.push({ nombre, producto, detalle });
         }
       }
     }
 
     if (errores.length) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios', campos: errores });
+      return res.status(400).json({ error: 'Faltan campos obligatorios', campos: [...new Set(errores)] });
     }
 
     const folio = await siguienteFolio();
     const { fecha, fechaHora } = fechaHoraStr();
-    const otrosTripulantesLimpio = otrosTripulantesArr.map((n) => String(n).trim());
+    const otrosTripulantesLimpio = tripulantesLimpio.slice(1).map((t) => t.nombre);
 
     const info = await client.execute({
       sql: `INSERT INTO registros
-        (folio, fecha_hora, fecha, empresa, celular_empresa, aclaracion, dni, patente, pax, firma, entregado, cantidad_tripulantes, otros_tripulantes)
-        VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?)`,
+        (folio, fecha_hora, fecha, empresa, celular_empresa, aclaracion, dni, patente, pax, firma, entregado, cantidad_tripulantes, otros_tripulantes, pedidos)
+        VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?,?)`,
       args: [
         folio,
         fechaHora,
@@ -125,6 +145,7 @@ app.post('/api/registros', async (req, res) => {
         firma,
         cantidadTripulantes,
         JSON.stringify(otrosTripulantesLimpio),
+        JSON.stringify(tripulantesLimpio),
       ],
     });
 
@@ -142,7 +163,7 @@ app.get('/api/registros/hoy', async (req, res) => {
   try {
     const hoy = fechaHoyStr();
     const result = await client.execute({
-      sql: `SELECT id, folio, fecha_hora, empresa, celular_empresa, aclaracion, patente, pax, entregado, cantidad_tripulantes, otros_tripulantes
+      sql: `SELECT id, folio, fecha_hora, empresa, celular_empresa, aclaracion, patente, pax, entregado, cantidad_tripulantes, otros_tripulantes, pedidos
             FROM registros WHERE fecha = ? ORDER BY id DESC`,
       args: [hoy],
     });
@@ -294,6 +315,7 @@ app.get('/api/admin/export.csv', requireAdmin, async (req, res) => {
     'entregado',
     'cantidad_tripulantes',
     'otros_tripulantes',
+    'pedidos',
   ];
   const csvEscape = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lines = [headers.join(';')];
@@ -304,6 +326,15 @@ app.get('/api/admin/export.csv', requireAdmin, async (req, res) => {
     } catch (e) {
       otros = [];
     }
+    let pedidos = [];
+    try {
+      pedidos = JSON.parse(r.pedidos || '[]');
+    } catch (e) {
+      pedidos = [];
+    }
+    const pedidosTexto = pedidos
+      .map((p) => `${p.nombre}: ${p.producto}${p.detalle ? ` (${p.detalle})` : ''}`)
+      .join(' | ');
     lines.push(
       [
         r.folio,
@@ -317,6 +348,7 @@ app.get('/api/admin/export.csv', requireAdmin, async (req, res) => {
         r.entregado ? 'SI' : 'NO',
         r.cantidad_tripulantes || 1,
         otros.join(' | '),
+        pedidosTexto,
       ]
         .map(csvEscape)
         .join(';')

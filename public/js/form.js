@@ -67,41 +67,131 @@
     ocultarError('firma');
   });
 
-  // ---- Cantidad de tripulantes: genera casillas dinamicas para el resto ----
+  // ---- Cantidad de tripulantes + pedido de comida de cada uno ----
   const selectCantidad = document.getElementById('cantidad_tripulantes');
   const wrapOtros = document.getElementById('otros-tripulantes-wrap');
 
-  function regenerarCamposTripulantes() {
-    const cantidad = parseInt(selectCantidad.value, 10);
-    wrapOtros.innerHTML = '';
-    if (!cantidad || cantidad <= 1) return;
+  const PRODUCTOS = [
+    'Combo de Café',
+    'Combo de Hamb. Simple con Queso',
+    'Combo de Hamb. Simple con Huevo',
+    'Combo de Hamb. Doble',
+    'Combo de Hamb. Doble con Huevo',
+    'Combo de Ensalada',
+    'Otro',
+  ];
+  const TIPOS_CAFE = ['Cafe + 2 medialunas', 'Cafe con leche + 2 medialunas'];
 
-    for (let i = 2; i <= cantidad; i++) {
-      const idCampo = `otro_tripulante_${i}`;
+  function crearSelect(id, opciones, placeholder) {
+    const select = document.createElement('select');
+    select.id = id;
+    const optPlaceholder = document.createElement('option');
+    optPlaceholder.value = '';
+    optPlaceholder.textContent = placeholder;
+    select.appendChild(optPlaceholder);
+    opciones.forEach((op) => {
+      const opt = document.createElement('option');
+      opt.value = op;
+      opt.textContent = op;
+      select.appendChild(opt);
+    });
+    return select;
+  }
+
+  function actualizarSubcampoProducto(indice) {
+    const producto = document.getElementById(`producto_${indice}`).value;
+    const wrapSub = document.getElementById(`subcampo_wrap_${indice}`);
+    wrapSub.innerHTML = '';
+
+    if (producto === 'Combo de Café') {
       const label = document.createElement('label');
-      label.textContent = `Nombre y apellido - Tripulante ${i} `;
-      const req = document.createElement('span');
-      req.className = 'req';
-      req.textContent = '*';
-      label.appendChild(req);
+      label.innerHTML = 'Tipo de café <span class="req">*</span>';
+      const select = crearSelect(`tipo_cafe_${indice}`, TIPOS_CAFE, 'Seleccioná...');
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'msg-error';
+      errorDiv.id = `err-tipo_cafe_${indice}`;
+      errorDiv.textContent = 'Elegí el tipo de café.';
+      select.addEventListener('change', () => ocultarError(`tipo_cafe_${indice}`));
+      wrapSub.appendChild(label);
+      wrapSub.appendChild(select);
+      wrapSub.appendChild(errorDiv);
+    } else if (producto === 'Otro') {
+      const label = document.createElement('label');
+      label.innerHTML = 'Detalle del producto <span class="req">*</span>';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = `otro_detalle_${indice}`;
+      input.autocomplete = 'off';
+      input.placeholder = 'Indicá qué producto queres';
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'msg-error';
+      errorDiv.id = `err-otro_detalle_${indice}`;
+      errorDiv.textContent = 'Indicá qué producto queres.';
+      input.addEventListener('input', () => ocultarError(`otro_detalle_${indice}`));
+      wrapSub.appendChild(label);
+      wrapSub.appendChild(input);
+      wrapSub.appendChild(errorDiv);
+    }
+  }
 
+  function crearBloqueTripulante(indice, esVos) {
+    const card = document.createElement('div');
+    card.className = 'tripulante-card';
+
+    const titulo = document.createElement('h4');
+    titulo.textContent = esVos ? `Tripulante ${indice} (vos)` : `Tripulante ${indice}`;
+    card.appendChild(titulo);
+
+    if (!esVos) {
+      const idCampo = `otro_tripulante_${indice}`;
+      const label = document.createElement('label');
+      label.innerHTML = 'Nombre y apellido <span class="req">*</span>';
       const input = document.createElement('input');
       input.type = 'text';
       input.id = idCampo;
       input.className = 'otro-tripulante-input';
       input.autocomplete = 'off';
       input.placeholder = 'Nombre y apellido completo';
-
       const errorDiv = document.createElement('div');
       errorDiv.className = 'msg-error';
       errorDiv.id = `err-${idCampo}`;
       errorDiv.textContent = 'Ingresá el nombre de este tripulante.';
-
       input.addEventListener('input', () => ocultarError(idCampo));
+      card.appendChild(label);
+      card.appendChild(input);
+      card.appendChild(errorDiv);
+    }
 
-      wrapOtros.appendChild(label);
-      wrapOtros.appendChild(input);
-      wrapOtros.appendChild(errorDiv);
+    const labelProducto = document.createElement('label');
+    labelProducto.innerHTML = 'Comida / desayuno <span class="req">*</span>';
+    const selectProducto = crearSelect(`producto_${indice}`, PRODUCTOS, 'Seleccioná...');
+    const errorProducto = document.createElement('div');
+    errorProducto.className = 'msg-error';
+    errorProducto.id = `err-producto_${indice}`;
+    errorProducto.textContent = 'Elegí una opción.';
+    selectProducto.addEventListener('change', () => {
+      ocultarError(`producto_${indice}`);
+      actualizarSubcampoProducto(indice);
+    });
+
+    const subWrap = document.createElement('div');
+    subWrap.id = `subcampo_wrap_${indice}`;
+
+    card.appendChild(labelProducto);
+    card.appendChild(selectProducto);
+    card.appendChild(errorProducto);
+    card.appendChild(subWrap);
+
+    wrapOtros.appendChild(card);
+  }
+
+  function regenerarCamposTripulantes() {
+    const cantidad = parseInt(selectCantidad.value, 10);
+    wrapOtros.innerHTML = '';
+    if (!cantidad) return;
+
+    for (let i = 1; i <= cantidad; i++) {
+      crearBloqueTripulante(i, i === 1);
     }
   }
 
@@ -159,19 +249,55 @@
     }
     const cantidadTripulantes = parseInt(cantidadTripulantesVal, 10) || 0;
 
-    // Nombres de los demas tripulantes (campos generados dinamicamente)
-    const otrosTripulantes = [];
-    for (let i = 2; i <= cantidadTripulantes; i++) {
-      const idCampo = `otro_tripulante_${i}`;
-      const input = document.getElementById(idCampo);
-      const v = input ? input.value.trim() : '';
-      if (!v) {
-        mostrarError(idCampo);
+    // Nombres y pedido de comida de cada tripulante (campos generados dinamicamente)
+    const tripulantes = [];
+    for (let i = 1; i <= cantidadTripulantes; i++) {
+      let nombre;
+      if (i === 1) {
+        nombre = valores.aclaracion; // el que completa el formulario
+      } else {
+        const idCampo = `otro_tripulante_${i}`;
+        const input = document.getElementById(idCampo);
+        nombre = input ? input.value.trim() : '';
+        if (!nombre) {
+          mostrarError(idCampo);
+          valido = false;
+        } else {
+          ocultarError(idCampo);
+        }
+      }
+
+      const selectProducto = document.getElementById(`producto_${i}`);
+      const producto = selectProducto ? selectProducto.value : '';
+      if (!producto) {
+        mostrarError(`producto_${i}`);
         valido = false;
       } else {
-        ocultarError(idCampo);
+        ocultarError(`producto_${i}`);
       }
-      otrosTripulantes.push(v);
+
+      let detalle = null;
+      if (producto === 'Combo de Café') {
+        const selectCafe = document.getElementById(`tipo_cafe_${i}`);
+        detalle = selectCafe ? selectCafe.value : '';
+        if (!detalle) {
+          mostrarError(`tipo_cafe_${i}`);
+          valido = false;
+        } else {
+          ocultarError(`tipo_cafe_${i}`);
+        }
+      } else if (producto === 'Otro') {
+        const inputOtro = document.getElementById(`otro_detalle_${i}`);
+        detalle = inputOtro ? inputOtro.value.trim() : '';
+        if (!detalle) {
+          mostrarError(`otro_detalle_${i}`);
+          valido = false;
+        } else {
+          ocultarError(`otro_detalle_${i}`);
+        }
+      }
+
+      tripulantes.push({ nombre, producto, detalle });
     }
 
     if (!tieneTrazo) {
@@ -200,7 +326,7 @@
       patente: valores.patente,
       pax: Number(valores.pax),
       cantidad_tripulantes: cantidadTripulantes,
-      otros_tripulantes: otrosTripulantes,
+      tripulantes: tripulantes,
       firma: canvas.toDataURL('image/png'),
     };
 
