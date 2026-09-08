@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Administración - YPF Full</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="marca">YPF<span> · Full</span></div>
+    <div class="subtitulo">Panel de administración</div>
+  </div>
+
+  <div class="contenedor ancho">
+    <div class="top-admin">
+      <h2>Reporte de registros</h2>
+      <div style="display:flex;gap:10px">
+        <button class="btn secundario chico" id="btn-qr">Ver / imprimir QR</button>
+        <button class="btn secundario chico" id="btn-logout">Cerrar sesión</button>
+      </div>
+    </div>
+
+    <div class="resumen-grid" id="resumen"></div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Filtros</h3>
+      <div class="filtros">
+        <div class="campo">
+          <label>Desde</label>
+          <input type="date" id="f-desde" />
+        </div>
+        <div class="campo">
+          <label>Hasta</label>
+          <input type="date" id="f-hasta" />
+        </div>
+        <div class="campo">
+          <label>Empresa</label>
+          <input type="text" id="f-empresa" placeholder="Buscar empresa..." />
+        </div>
+        <div class="campo">
+          <label>Patente</label>
+          <input type="text" id="f-patente" placeholder="Buscar patente..." />
+        </div>
+        <div class="campo" style="flex:0">
+          <button class="btn chico" id="btn-filtrar">Filtrar</button>
+        </div>
+        <div class="campo" style="flex:0">
+          <button class="btn secundario chico" id="btn-limpiar">Limpiar</button>
+        </div>
+        <div class="campo" style="flex:0">
+          <button class="btn secundario chico" id="btn-exportar">Exportar CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tabla-scroll">
+        <table id="tabla-registros">
+          <thead>
+            <tr>
+              <th>Folio</th><th>Fecha</th><th>Hora</th><th>Empresa</th><th>Celular</th>
+              <th>Chofer/Coord.</th><th>DNI</th><th>Patente</th><th>PAX</th><th>Firma</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo-tabla"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal QR -->
+  <div id="modal-qr" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;z-index:50">
+    <div class="card" style="max-width:360px;text-align:center">
+      <h3>Código QR del formulario</h3>
+      <img src="/api/qr.png" alt="QR formulario" style="width:100%;max-width:280px" />
+      <p class="hint">Pegar en el mostrador / isla de Full. Todos los choferes usan este mismo QR.</p>
+      <button class="btn secundario chico" id="btn-cerrar-qr">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- Modal firma -->
+  <div id="modal-firma" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;z-index:50">
+    <div class="card" style="max-width:420px;text-align:center">
+      <h3>Firma</h3>
+      <img id="img-firma-grande" src="" alt="Firma" style="width:100%;border:1px solid var(--gris-borde);border-radius:8px" />
+      <button class="btn secundario chico" id="btn-cerrar-firma" style="margin-top:14px">Cerrar</button>
+    </div>
+  </div>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

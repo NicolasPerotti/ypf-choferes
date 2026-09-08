@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin - YPF Full</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="marca">YPF<span> · Full</span></div>
+    <div class="subtitulo">Panel de administración</div>
+  </div>
+
+  <div class="contenedor login-box">
+    <div class="card">
+      <h2>Ingresar</h2>
+      <form id="form-login">
+        <label>Contraseña de administrador</label>
+        <input type="password" id="password" autofocus />
+        <div class="msg-error show" id="err-login" style="display:none">Contraseña incorrecta.</div>
+        <button class="btn" type="submit">Ingresar</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = document.getElementById('password').value;
+      const err = document.getElementById('err-login');
+      err.style.display = 'none';
+      try {
+        const resp = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+        if (resp.ok) {
+          window.location.href = '/admin';
+        } else {
+          err.style.display = 'block';
+        }
+      } catch (e2) {
+        err.textContent = 'Error de conexión.';
+        err.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

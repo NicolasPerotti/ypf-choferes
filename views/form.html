@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Registro Choferes y Coordinadores - YPF</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="marca">YPF<span> · Full</span></div>
+    <div class="subtitulo">Registro de choferes<br>y coordinadores</div>
+  </div>
+
+  <div class="contenedor" id="vista-form">
+    <div class="card">
+      <h2>Bienvenido/a</h2>
+      <p class="hint">Completá tus datos para registrar tu visita y recibir tu comida/desayuno de cortesía. Todos los campos son obligatorios.</p>
+
+      <form id="formulario" novalidate>
+        <label>Empresa <span class="req">*</span></label>
+        <input type="text" id="empresa" autocomplete="off" placeholder="Ej: Andesmar" />
+        <div class="msg-error" id="err-empresa">Ingresá el nombre de la empresa.</div>
+
+        <label>Celular de contacto de la empresa</label>
+        <input type="tel" id="celular_empresa" autocomplete="off" placeholder="Ej: 11 2345 6789" />
+        <div class="hint">Opcional.</div>
+
+        <label>Aclaración (nombre y apellido) <span class="req">*</span></label>
+        <input type="text" id="aclaracion" autocomplete="off" placeholder="Nombre y apellido completo" />
+        <div class="msg-error" id="err-aclaracion">Ingresá nombre y apellido.</div>
+
+        <label>DNI <span class="req">*</span></label>
+        <input type="text" id="dni" inputmode="numeric" autocomplete="off" placeholder="Sin puntos" />
+        <div class="msg-error" id="err-dni">Ingresá el número de DNI.</div>
+
+        <label>Patente del colectivo <span class="req">*</span></label>
+        <input type="text" id="patente" autocomplete="off" placeholder="Ej: AB123CD" style="text-transform:uppercase" />
+        <div class="msg-error" id="err-patente">Ingresá la patente.</div>
+
+        <label>PAX (cantidad de pasajeros) <span class="req">*</span></label>
+        <input type="number" id="pax" min="1" step="1" inputmode="numeric" placeholder="Ej: 42" />
+        <div class="msg-error" id="err-pax">Ingresá una cantidad de pasajeros válida.</div>
+
+        <label>Firma <span class="req">*</span></label>
+        <div class="firma-wrap" id="firma-wrap">
+          <canvas id="firma-canvas"></canvas>
+        </div>
+        <div class="firma-acciones">
+          <button type="button" class="btn-link" id="limpiar-firma">Borrar firma</button>
+          <span class="hint">Firmá con el dedo dentro del recuadro</span>
+        </div>
+        <div class="msg-error" id="err-firma">Falta la firma.</div>
+
+        <button type="submit" class="btn" id="btn-enviar">Enviar registro</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="contenedor" id="vista-confirmacion" style="display:none">
+    <div class="card confirmacion">
+      <div class="check">&#10003;</div>
+      <h2>¡Gracias por su visita!</h2>
+      <p>Ya podés acercarte al mostrador a buscar tu comida/desayuno.</p>
+      <p class="folio" id="folio-confirmacion"></p>
+      <button class="btn secundario" id="btn-nuevo" style="margin-top:26px">Cargar otro registro</button>
+    </div>
+  </div>
+
+  <script src="/js/form.js"></script>
+</body>
+</html>

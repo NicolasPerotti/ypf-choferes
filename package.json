@@ -1,0 +1,16 @@
+{
+  "name": "ypf-choferes-coordinadores",
+  "version": "1.0.0",
+  "description": "Digitalizacion del registro de choferes y coordinadores - Estacion YPF",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "cookie-session": "^2.1.0",
+    "express": "^4.21.0",
+    "qrcode": "^1.5.4"
+  }
+}
