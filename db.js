@@ -1,1 +1,68 @@
-const fs = require('fs'); const path = require('path'); const Database = require('better-sqlite3'); const dataDir = path.join(__dirname, 'data'); if (!fs.existsSync(dataDir)) { fs.mkdirSync(dataDir, { recursive: true }); } const dbPath = path.join(dataDir, 'registros.db'); const db = new Database(dbPath); db.pragma('journal_mode = WAL'); db.exec(` CREATE TABLE IF NOT EXISTS registros ( id INTEGER PRIMARY KEY AUTOINCREMENT, folio INTEGER NOT NULL, fecha_hora TEXT NOT NULL, fecha TEXT NOT NULL, empresa TEXT NOT NULL, celular_empresa TEXT, aclaracion TEXT NOT NULL, dni TEXT NOT NULL, patente TEXT NOT NULL, pax INTEGER NOT NULL, firma TEXT NOT NULL, entregado INTEGER NOT NULL DEFAULT 0 ); CREATE TABLE IF NOT EXISTS contador ( id INTEGER PRIMARY KEY CHECK (id = 1), ultimo_folio INTEGER NOT NULL ); `); const FOLIO_INICIAL = parseInt(process.env.FOLIO_INICIAL || '3972', 10); const row = db.prepare('SELECT ultimo_folio FROM contador WHERE id = 1').get(); if (!row) { db.prepare('INSERT INTO contador (id, ultimo_folio) VALUES (1, ?)').run(FOLIO_INICIAL - 1); } function siguienteFolio() { const tx = db.transaction(() => { db.prepare('UPDATE contador SET ultimo_folio = ultimo_folio + 1 WHERE id = 1').run(); return db.prepare('SELECT ultimo_folio FROM contador WHERE id = 1').get().ultimo_folio; }); return tx(); } module.exports = { db, siguienteFolio };
+const fs = require('fs');
+const path = require('path');
+const { createClient } = require('@libsql/client');
+
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Si estan definidas TURSO_DATABASE_URL y TURSO_AUTH_TOKEN, los datos se
+// guardan en la nube (Turso) y sobreviven aunque el servidor se reinicie o
+// se vuelva a desplegar. Si no estan definidas (por ejemplo corriendo en tu
+// propia PC), se usa un archivo local en data/registros.db, igual que antes.
+const url = process.env.TURSO_DATABASE_URL || `file:${path.join(dataDir, 'registros.db')}`;
+const authToken = process.env.TURSO_AUTH_TOKEN || undefined;
+
+const client = createClient({ url, authToken });
+
+const FOLIO_INICIAL = parseInt(process.env.FOLIO_INICIAL || '3972', 10);
+
+async function init() {
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS registros (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      folio INTEGER NOT NULL,
+      fecha_hora TEXT NOT NULL,
+      fecha TEXT NOT NULL,
+      empresa TEXT NOT NULL,
+      celular_empresa TEXT,
+      aclaracion TEXT NOT NULL,
+      dni TEXT NOT NULL,
+      patente TEXT NOT NULL,
+      pax INTEGER NOT NULL,
+      firma TEXT NOT NULL,
+      entregado INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS contador (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      ultimo_folio INTEGER NOT NULL
+    )
+  `);
+
+  const row = await client.execute('SELECT ultimo_folio FROM contador WHERE id = 1');
+  if (row.rows.length === 0) {
+    await client.execute({
+      sql: 'INSERT INTO contador (id, ultimo_folio) VALUES (1, ?)',
+      args: [FOLIO_INICIAL - 1],
+    });
+  }
+}
+
+// Promesa que se resuelve cuando la base ya esta lista para usarse.
+const listo = init();
+
+async function siguienteFolio() {
+  await listo;
+  // UPDATE ... RETURNING hace el incremento y la lectura en un solo paso
+  // atomico, sin necesidad de una transaccion aparte.
+  const res = await client.execute(
+    'UPDATE contador SET ultimo_folio = ultimo_folio + 1 WHERE id = 1 RETURNING ultimo_folio'
+  );
+  return Number(res.rows[0].ultimo_folio);
+}
+
+module.exports = { client, listo, siguienteFolio };

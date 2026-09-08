@@ -2,7 +2,7 @@ const path = require('path');
 const express = require('express');
 const cookieSession = require('cookie-session');
 const QRCode = require('qrcode');
-const { db, siguienteFolio } = require('./db');
+const { client, listo, siguienteFolio } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -57,7 +57,7 @@ function sendView(res, file) {
 app.get('/', (req, res) => res.redirect('/form'));
 app.get('/form', (req, res) => sendView(res, 'form.html'));
 
-app.post('/api/registros', (req, res) => {
+app.post('/api/registros', async (req, res) => {
   try {
     const { empresa, celular_empresa, aclaracion, dni, patente, pax, firma } = req.body;
 
@@ -74,16 +74,14 @@ app.post('/api/registros', (req, res) => {
       return res.status(400).json({ error: 'Faltan campos obligatorios', campos: errores });
     }
 
-    const folio = siguienteFolio();
+    const folio = await siguienteFolio();
     const { fecha, fechaHora } = fechaHoraStr();
 
-    const info = db
-      .prepare(
-        `INSERT INTO registros
+    const info = await client.execute({
+      sql: `INSERT INTO registros
         (folio, fecha_hora, fecha, empresa, celular_empresa, aclaracion, dni, patente, pax, firma, entregado)
-        VALUES (?,?,?,?,?,?,?,?,?,?,0)`
-      )
-      .run(
+        VALUES (?,?,?,?,?,?,?,?,?,?,0)`,
+      args: [
         folio,
         fechaHora,
         fecha,
@@ -93,10 +91,11 @@ app.post('/api/registros', (req, res) => {
         String(dni).trim(),
         String(patente).trim().toUpperCase(),
         Number(pax),
-        firma
-      );
+        firma,
+      ],
+    });
 
-    res.json({ ok: true, id: info.lastInsertRowid, folio, fecha_hora: fechaHora });
+    res.json({ ok: true, id: Number(info.lastInsertRowid), folio, fecha_hora: fechaHora });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error interno al guardar el registro' });
@@ -106,22 +105,34 @@ app.post('/api/registros', (req, res) => {
 // ---------- Panel de vendedores (solo lectura, sin login) ----------
 app.get('/vendedores', (req, res) => sendView(res, 'vendedores.html'));
 
-app.get('/api/registros/hoy', (req, res) => {
-  const hoy = fechaHoyStr();
-  const rows = db
-    .prepare(
-      `SELECT id, folio, fecha_hora, empresa, celular_empresa, aclaracion, patente, pax, entregado
-       FROM registros WHERE fecha = ? ORDER BY id DESC`
-    )
-    .all(hoy);
-  res.json(rows);
+app.get('/api/registros/hoy', async (req, res) => {
+  try {
+    const hoy = fechaHoyStr();
+    const result = await client.execute({
+      sql: `SELECT id, folio, fecha_hora, empresa, celular_empresa, aclaracion, patente, pax, entregado
+            FROM registros WHERE fecha = ? ORDER BY id DESC`,
+      args: [hoy],
+    });
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al leer los registros de hoy' });
+  }
 });
 
-app.patch('/api/registros/:id/entregado', (req, res) => {
-  const { id } = req.params;
-  const { entregado } = req.body;
-  db.prepare('UPDATE registros SET entregado = ? WHERE id = ?').run(entregado ? 1 : 0, id);
-  res.json({ ok: true });
+app.patch('/api/registros/:id/entregado', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { entregado } = req.body;
+    await client.execute({
+      sql: 'UPDATE registros SET entregado = ? WHERE id = ?',
+      args: [entregado ? 1 : 0, id],
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al actualizar el registro' });
+  }
 });
 
 // ---------- QR ----------
@@ -150,7 +161,71 @@ app.post('/api/admin/logout', (req, res) => {
 
 app.get('/admin', requireAdmin, (req, res) => sendView(res, 'admin.html'));
 
-app.get('/api/admin/registros', requireAdmin, (req, res) => {
+app.get('/api/admin/registros', requireAdmin, async (req, res) => {
+  try {
+    const { desde, hasta, empresa, patente } = req.query;
+    let sql = 'SELECT * FROM registros WHERE 1=1';
+    const params = [];
+    if (desde) {
+      sql += ' AND fecha >= ?';
+      params.push(desde);
+    }
+    if (hasta) {
+      sql += ' AND fecha <= ?';
+      params.push(hasta);
+    }
+    if (empresa) {
+      sql += ' AND empresa LIKE ?';
+      params.push(`%${empresa}%`);
+    }
+    if (patente) {
+      sql += ' AND patente LIKE ?';
+      params.push(`%${patente.toUpperCase()}%`);
+    }
+    sql += ' ORDER BY id DESC';
+    const result = await client.execute({ sql, args: params });
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al leer los registros' });
+  }
+});
+
+app.get('/api/admin/resumen', requireAdmin, async (req, res) => {
+  try {
+    const hoy = fechaHoyStr();
+
+    const [totalRes, paxRes, hoyRes, paxHoyRes, rankingRes, porDiaRes] = await Promise.all([
+      client.execute('SELECT COUNT(*) c FROM registros'),
+      client.execute('SELECT COALESCE(SUM(pax),0) s FROM registros'),
+      client.execute({ sql: 'SELECT COUNT(*) c FROM registros WHERE fecha = ?', args: [hoy] }),
+      client.execute({ sql: 'SELECT COALESCE(SUM(pax),0) s FROM registros WHERE fecha = ?', args: [hoy] }),
+      client.execute(
+        `SELECT empresa, COUNT(*) cantidad, SUM(pax) pax_total
+         FROM registros GROUP BY empresa ORDER BY cantidad DESC LIMIT 10`
+      ),
+      client.execute(
+        `SELECT fecha, COUNT(*) cantidad, SUM(pax) pax_total
+         FROM registros GROUP BY fecha ORDER BY fecha DESC LIMIT 30`
+      ),
+    ]);
+
+    res.json({
+      totalColectivos: Number(totalRes.rows[0].c),
+      totalPax: Number(paxRes.rows[0].s),
+      colectivosHoy: Number(hoyRes.rows[0].c),
+      paxHoy: Number(paxHoyRes.rows[0].s),
+      rankingEmpresas: rankingRes.rows,
+      porDia: porDiaRes.rows,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al calcular el resumen' });
+  }
+});
+
+app.get('/api/admin/export.csv', requireAdmin, async (req, res) => {
+ try {
   const { desde, hasta, empresa, patente } = req.query;
   let sql = 'SELECT * FROM registros WHERE 1=1';
   const params = [];
@@ -171,53 +246,8 @@ app.get('/api/admin/registros', requireAdmin, (req, res) => {
     params.push(`%${patente.toUpperCase()}%`);
   }
   sql += ' ORDER BY id DESC';
-  const rows = db.prepare(sql).all(...params);
-  res.json(rows);
-});
-
-app.get('/api/admin/resumen', requireAdmin, (req, res) => {
-  const totalColectivos = db.prepare('SELECT COUNT(*) c FROM registros').get().c;
-  const totalPax = db.prepare('SELECT COALESCE(SUM(pax),0) s FROM registros').get().s;
-  const hoy = fechaHoyStr();
-  const colectivosHoy = db.prepare('SELECT COUNT(*) c FROM registros WHERE fecha = ?').get(hoy).c;
-  const paxHoy = db.prepare('SELECT COALESCE(SUM(pax),0) s FROM registros WHERE fecha = ?').get(hoy).s;
-  const rankingEmpresas = db
-    .prepare(
-      `SELECT empresa, COUNT(*) cantidad, SUM(pax) pax_total
-       FROM registros GROUP BY empresa ORDER BY cantidad DESC LIMIT 10`
-    )
-    .all();
-  const porDia = db
-    .prepare(
-      `SELECT fecha, COUNT(*) cantidad, SUM(pax) pax_total
-       FROM registros GROUP BY fecha ORDER BY fecha DESC LIMIT 30`
-    )
-    .all();
-  res.json({ totalColectivos, totalPax, colectivosHoy, paxHoy, rankingEmpresas, porDia });
-});
-
-app.get('/api/admin/export.csv', requireAdmin, (req, res) => {
-  const { desde, hasta, empresa, patente } = req.query;
-  let sql = 'SELECT * FROM registros WHERE 1=1';
-  const params = [];
-  if (desde) {
-    sql += ' AND fecha >= ?';
-    params.push(desde);
-  }
-  if (hasta) {
-    sql += ' AND fecha <= ?';
-    params.push(hasta);
-  }
-  if (empresa) {
-    sql += ' AND empresa LIKE ?';
-    params.push(`%${empresa}%`);
-  }
-  if (patente) {
-    sql += ' AND patente LIKE ?';
-    params.push(`%${patente.toUpperCase()}%`);
-  }
-  sql += ' ORDER BY id DESC';
-  const rows = db.prepare(sql).all(...params);
+  const result = await client.execute({ sql, args: params });
+  const rows = result.rows;
 
   const headers = [
     'folio',
@@ -253,11 +283,22 @@ app.get('/api/admin/export.csv', requireAdmin, (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="registros_choferes.csv"`);
   res.send(csv);
+ } catch (err) {
+  console.error(err);
+  res.status(500).send('Error al exportar los datos');
+ }
 });
 
-app.listen(PORT, () => {
-  console.log(`YPF Choferes y Coordinadores corriendo en http://localhost:${PORT}`);
-  console.log(`Formulario:  http://localhost:${PORT}/form`);
-  console.log(`Vendedores:  http://localhost:${PORT}/vendedores`);
-  console.log(`Admin:       http://localhost:${PORT}/admin  (password: ${ADMIN_PASSWORD})`);
-});
+listo
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`YPF Choferes y Coordinadores corriendo en http://localhost:${PORT}`);
+      console.log(`Formulario:  http://localhost:${PORT}/form`);
+      console.log(`Vendedores:  http://localhost:${PORT}/vendedores`);
+      console.log(`Admin:       http://localhost:${PORT}/admin  (password: ${ADMIN_PASSWORD})`);
+    });
+  })
+  .catch((err) => {
+    console.error('No se pudo inicializar la base de datos:', err);
+    process.exit(1);
+  });

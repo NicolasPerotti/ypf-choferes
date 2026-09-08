@@ -57,6 +57,32 @@ ADMIN_PASSWORD="elegir-una-clave" FOLIO_INICIAL="3972" npm start
 Si no se define nada, arranca igual con los valores por defecto (se puede
 cambiar más adelante, siempre y cuando no se haya usado ya el contador).
 
+## 3.b Base de datos en la nube con Turso (recomendado si vas a desplegar en Railway/Render)
+
+Si vas a correr esta app en tu propia PC nada más, podés saltear este paso: por
+defecto guarda todo en un archivo local (`data/registros.db`) y funciona
+igual.
+
+Pero si la vas a desplegar en un servicio como Railway, conviene usar
+**Turso** (gratis, sin tarjeta) para que los registros nunca se pierdan,
+incluso sin contratar almacenamiento pago en el proveedor de hosting:
+
+1. Entrá a [turso.tech](https://turso.tech) y creá una cuenta gratis
+   (podés entrar con GitHub).
+2. Creá una base de datos nueva (botón "Create Database"), ponele un nombre,
+   por ejemplo `ypf-choferes`.
+3. Una vez creada, buscá el botón para ver la "Connection URL" — copiala,
+   empieza con `libsql://...`.
+4. Generá un "Auth Token" (token de autenticación) desde la misma base de
+   datos y copialo también.
+5. En tu proveedor de hosting (Railway, Render, etc.), agregá dos variables
+   de entorno:
+   - `TURSO_DATABASE_URL` = la Connection URL que copiaste
+   - `TURSO_AUTH_TOKEN` = el token que generaste
+6. Volvé a desplegar la app. A partir de ahí, todos los registros se guardan
+   en Turso — sobreviven a reinicios, actualizaciones y no necesitás
+   contratar ningún volumen ni disco pago.
+
 ## 4. Arrancar la aplicación
 
 ```bash
