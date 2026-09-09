@@ -14,9 +14,12 @@
   setInterval(actualizarReloj, 1000);
   actualizarReloj();
 
-  function horaDe(fechaHora) {
+  function fechaHoraCorta(fechaHora) {
     // fechaHora viene como "YYYY-MM-DD HH:MM:SS"
-    return fechaHora.split(' ')[1] ? fechaHora.split(' ')[1].slice(0, 5) : fechaHora;
+    const [fecha, hora] = fechaHora.split(' ');
+    const [, mes, dia] = fecha ? fecha.split('-') : ['', '', ''];
+    const horaCorta = hora ? hora.slice(0, 5) : '';
+    return dia && mes ? `${dia}/${mes} ${horaCorta}` : horaCorta;
   }
 
   function tripulantesTexto(r) {
@@ -54,16 +57,16 @@
     contador.textContent = registros.length;
 
     if (!registros.length) {
-      zona.innerHTML = '<div class="vacio">Todavía no hay registros hoy.<br>Se van a mostrar acá apenas un chofer complete el formulario.</div>';
+      zona.innerHTML = '<div class="vacio">Todavía no hay registros de hoy ni de ayer.<br>Se van a mostrar acá apenas un chofer complete el formulario.</div>';
       return;
     }
 
     const filas = registros
       .map((r) => `
         <tr class="${r.entregado ? 'entregado' : ''}" data-id="${r.id}">
-          <td data-label="Hora">${horaDe(r.fecha_hora)}</td>
+          <td data-label="Fecha y hora">${fechaHoraCorta(r.fecha_hora)}</td>
           <td data-label="Empresa">${escapeHtml(r.empresa)}</td>
-          <td data-label="Patente">${escapeHtml(r.patente)}</td>
+          <td data-label="Folio">N° ${r.folio}</td>
           <td data-label="Chofer/Coord.">${escapeHtml(r.aclaracion)}</td>
           <td data-label="Tripulantes">${tripulantesTexto(r)}</td>
           <td data-label="Pedidos (para cocinar)">${pedidosHtml(r)}</td>
@@ -82,7 +85,7 @@
         <table>
           <thead>
             <tr>
-              <th>Hora</th><th>Empresa</th><th>Patente</th><th>Chofer / Coordinador</th><th>Tripulantes</th><th>Pedidos (para cocinar)</th><th>PAX</th><th>Estado</th>
+              <th>Fecha y hora</th><th>Empresa</th><th>Folio</th><th>Chofer / Coordinador</th><th>Tripulantes</th><th>Pedidos (para cocinar)</th><th>PAX</th><th>Estado</th>
             </tr>
           </thead>
           <tbody>${filas}</tbody>

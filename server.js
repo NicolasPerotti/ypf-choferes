@@ -32,6 +32,11 @@ app.use(
 function fechaHoyStr() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date()); // YYYY-MM-DD
 }
+function fechaAyerStr() {
+  const ahora = new Date();
+  const ayer = new Date(ahora.getTime() - 24 * 60 * 60 * 1000);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(ayer);
+}
 function fechaHoraStr() {
   const d = new Date();
   const fecha = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d);
@@ -64,7 +69,6 @@ const PRODUCTOS_VALIDOS = [
   'Combo de Hamb. Doble',
   'Combo de Hamb. Doble con Huevo',
   'Combo de Ensalada',
-  'Otro',
 ];
 const TIPOS_CAFE_VALIDOS = ['Cafe + 2 medialunas', 'Cafe con leche + 2 medialunas'];
 
@@ -104,11 +108,6 @@ app.post('/api/registros', async (req, res) => {
           }
           if (producto === 'Combo de Café') {
             if (!TIPOS_CAFE_VALIDOS.includes(detalle)) {
-              errores.push('tripulantes');
-              break;
-            }
-          } else if (producto === 'Otro') {
-            if (!detalle) {
               errores.push('tripulantes');
               break;
             }
@@ -162,10 +161,11 @@ app.get('/vendedores', (req, res) => sendView(res, 'vendedores.html'));
 app.get('/api/registros/hoy', async (req, res) => {
   try {
     const hoy = fechaHoyStr();
+    const ayer = fechaAyerStr();
     const result = await client.execute({
       sql: `SELECT id, folio, fecha_hora, empresa, celular_empresa, aclaracion, patente, pax, entregado, cantidad_tripulantes, otros_tripulantes, pedidos
-            FROM registros WHERE fecha = ? ORDER BY id DESC`,
-      args: [hoy],
+            FROM registros WHERE fecha IN (?, ?) ORDER BY id DESC`,
+      args: [hoy, ayer],
     });
     res.json(result.rows);
   } catch (err) {

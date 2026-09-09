@@ -78,7 +78,6 @@
     'Combo de Hamb. Doble',
     'Combo de Hamb. Doble con Huevo',
     'Combo de Ensalada',
-    'Otro',
   ];
   const TIPOS_CAFE = ['Cafe + 2 medialunas', 'Cafe con leche + 2 medialunas'];
 
@@ -114,22 +113,6 @@
       select.addEventListener('change', () => ocultarError(`tipo_cafe_${indice}`));
       wrapSub.appendChild(label);
       wrapSub.appendChild(select);
-      wrapSub.appendChild(errorDiv);
-    } else if (producto === 'Otro') {
-      const label = document.createElement('label');
-      label.innerHTML = 'Detalle del producto <span class="req">*</span>';
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.id = `otro_detalle_${indice}`;
-      input.autocomplete = 'off';
-      input.placeholder = 'Indicá qué producto queres';
-      const errorDiv = document.createElement('div');
-      errorDiv.className = 'msg-error';
-      errorDiv.id = `err-otro_detalle_${indice}`;
-      errorDiv.textContent = 'Indicá qué producto queres.';
-      input.addEventListener('input', () => ocultarError(`otro_detalle_${indice}`));
-      wrapSub.appendChild(label);
-      wrapSub.appendChild(input);
       wrapSub.appendChild(errorDiv);
     }
   }
@@ -285,15 +268,6 @@
           valido = false;
         } else {
           ocultarError(`tipo_cafe_${i}`);
-        }
-      } else if (producto === 'Otro') {
-        const inputOtro = document.getElementById(`otro_detalle_${i}`);
-        detalle = inputOtro ? inputOtro.value.trim() : '';
-        if (!detalle) {
-          mostrarError(`otro_detalle_${i}`);
-          valido = false;
-        } else {
-          ocultarError(`otro_detalle_${i}`);
         }
       }
 
